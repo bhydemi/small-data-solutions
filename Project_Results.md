@@ -15,16 +15,20 @@ So the prompt's description of class 1 as a denied application does **not** matc
 
 ## Part 3: Loan data augmentation
 
-The VAE used a 10-dimensional latent space, larger hidden layers, and a lower KL weight; it trained for 750 epochs on the 6,241 status-1 (default) records and generated 50,000 additional rows. The median generated-to-real feature standard-deviation ratio was 0.81. Evaluation reserved real loan records for calibration and testing; generated rows were included only in augmented training. The decision threshold was selected on the calibration split to maximize class-1 F1.
+The VAE used a 10-dimensional latent space, larger hidden layers, and a lower KL weight; it trained for 750 epochs on the 6,241 status-1 (default) records and generated 50,000 additional rows. The median generated-to-real feature standard-deviation ratio was 0.83. Synthetic examples are sampled from training-set posteriors; the VAE validation partition is used for model selection, not generation. The primary evaluation reserves real loan records for calibration and testing; generated rows are included only in augmented training. The decision threshold is selected on the calibration split to maximize class-1 F1.
 
 | Held-out metric | Original data | With synthetic rows |
 | --- | ---: | ---: |
-| Accuracy | 0.093 | 0.141 (12,500 synthetic rows) |
-| Class 0 precision / recall / F1 | 0.90 / 0.00 / 0.00 | 0.91 / 0.06 / 0.11 |
-| Class 1 precision / recall / F1 | 0.09 / 1.00 / 0.17 | 0.09 / 0.94 / 0.17 |
-| Macro F1 | 0.09 | 0.14 |
+| Accuracy | 0.093 | 0.154 (12,500 synthetic rows) |
+| Class 0 precision / recall / F1 | 0.90 / 0.00 / 0.00 | 0.91 / 0.07 / 0.14 |
+| Class 1 precision / recall / F1 | 0.09 / 1.00 / 0.17 | 0.09 / 0.93 / 0.17 |
+| Macro F1 | 0.09 | 0.15 |
 
-Using all 50,000 synthetic rows gave macro F1 0.09, so the smaller synthetic ratio performed better on macro F1. However, class-1 F1 stayed at 0.17 at both ratios. Class-1 precision remains low, so these results do **not** establish a useful predictor. The VAE produces varied rows, but this evaluation does not show a meaningful class-1 F1 improvement on held-out real data.
+Using all 50,000 synthetic rows gave macro F1 0.14, so the smaller synthetic ratio performed better on macro F1. However, class-1 F1 stayed at 0.17 at all ratios. Class-1 precision remains low, so these results do **not** establish a useful predictor. The VAE produces varied rows, but this evaluation does not show a meaningful class-1 F1 improvement on held-out real data.
+
+### Full augmented-dataset split check
+
+The notebook also applies the stratified 65% / 15% / 20% train-calibration-test split to the **entire augmented CSV**, as requested in the review. The test split contains 13,483 real and 10,011 synthetic records; accuracy is 0.946 and macro F1 is 0.945. This is a mixed-data diagnostic, not a real-world generalization estimate, because almost half the test rows are generated. The real-only test results above remain the primary performance measure.
 
 The executed [submission evidence notebook](Submission_Evidence.ipynb) records the Part 2 training history, validation and test reports, labeled image predictions, VAE training and validation losses, and Part 3 real-held-out comparisons. The comparison uses a fixed real-data split (65% training, 15% threshold calibration, 20% final test) with seed 42/43. The threshold is calibrated separately for each model on real calibration examples. Because the dataset is highly imbalanced and the classifier's scores are poorly calibrated, accuracy alone is not informative here.
 

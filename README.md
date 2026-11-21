@@ -9,7 +9,7 @@ The supplied 67,463-row loan dataset is a default-prediction dataset. Its source
 ## Results
 
 - Travel image classifier: **97.9% accuracy** on 48 held-out images, with a best validation accuracy of 96.7% in the recorded run.
-- Loan experiment: the VAE trains for 750 epochs and generates 50,000 status-1 rows. The notebook compares baseline and augmented training on real held-out data and shows that class-1 F1 remains weak (0.17); the dataset does not support a reliable predictor.
+- Loan experiment: the VAE trains for 750 epochs and generates 50,000 status-1 rows. The notebook shows both real-only held-out metrics and a full augmented-CSV split check; class-1 F1 remains weak (0.17) on real loans, so the dataset does not support a reliable predictor.
 - See [Project_Results.md](Project_Results.md) for split design, class metrics, label audit, and limitations.
 
 ## Executed submission evidence

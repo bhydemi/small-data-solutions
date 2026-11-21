@@ -134,7 +134,6 @@ def train_vae(model, trainloader, valloader, criterion, optimizer, device, num_e
     """Train and validate the VAE every epoch; restore the best validation state."""
     best_val = float("inf")
     best_state = None
-    best_mu, best_logvar = None, None
     history = {"train_loss": [], "val_loss": []}
 
     for epoch in range(num_epochs):
@@ -151,14 +150,11 @@ def train_vae(model, trainloader, valloader, criterion, optimizer, device, num_e
 
         model.eval()
         val_loss = 0.0
-        mu_batches, logvar_batches = [], []
         with torch.no_grad():
             for batch in valloader:
                 batch = batch.to(device)
                 reconstruction, mu, logvar = model(batch)
                 val_loss += criterion(reconstruction, batch, mu, logvar).item()
-                mu_batches.append(mu.cpu())
-                logvar_batches.append(logvar.cpu())
 
         mean_train = train_loss / max(1, len(trainloader))
         mean_val = val_loss / max(1, len(valloader))
@@ -167,8 +163,6 @@ def train_vae(model, trainloader, valloader, criterion, optimizer, device, num_e
         if mean_val < best_val:
             best_val = mean_val
             best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
-            best_mu = torch.cat(mu_batches)
-            best_logvar = torch.cat(logvar_batches)
         if (epoch + 1) % 50 == 0 or epoch == 0:
             print(f"Epoch {epoch + 1}/{num_epochs}: train loss {mean_train:.2f}; validation loss {mean_val:.2f}")
 
@@ -176,6 +170,16 @@ def train_vae(model, trainloader, valloader, criterion, optimizer, device, num_e
         raise RuntimeError("VAE did not complete a validation epoch; check dataset size and batch size")
     model.load_state_dict(best_state)
     model.to(device).eval()
+    # Draw synthetic records from training-set posteriors. Validation rows are
+    # reserved for model selection and must not seed generated observations.
+    mu_batches, logvar_batches = [], []
+    with torch.no_grad():
+        for batch in trainloader:
+            batch = batch.to(device)
+            mu, logvar = model.encode(batch)
+            mu_batches.append(mu.cpu())
+            logvar_batches.append(logvar.cpu())
+    best_mu, best_logvar = torch.cat(mu_batches), torch.cat(logvar_batches)
     return model, best_mu, best_logvar, history
 
 # Run the VAE training and evaluation workflow with this module.
