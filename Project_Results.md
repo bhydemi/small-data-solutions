@@ -9,13 +9,13 @@ So the prompt's description of class 1 as a denied application does **not** matc
 ## Part 2: Travel image classifier
 
 - Model: ImageNet-pretrained VGG16 with frozen pretrained layers and a three-class replacement head.
-- Training: 8 epochs; best validation accuracy was 98.3%.
+- Training: 8 epochs; best validation accuracy in the recorded run was 96.7% (58/60).
 - Held-out test accuracy: **97.9% (47/48 images)**. Beach: 16/16, desert: 15/16, forest: 16/16.
 - The saved checkpoint contains the task-specific classifier head and class names. The pretrained VGG16 backbone is retrieved by torchvision when rebuilding the model.
 
 ## Part 3: Loan data augmentation
 
-The VAE used a 10-dimensional latent space, larger hidden layers, and a lower KL weight; it trained for 750 epochs on the 6,241 denied-loan records and generated 50,000 additional rows. The median generated-to-real feature standard-deviation ratio was 0.81 (10th to 90th percentile: 0.74 to 0.90), up from severe under-dispersion with the starter settings. Evaluation reserved real loan records for calibration and testing; generated rows were included only in augmented training. The decision threshold was selected on the calibration split to maximize denied-class F1.
+The VAE used a 10-dimensional latent space, larger hidden layers, and a lower KL weight; it trained for 750 epochs on the 6,241 status-1 (default) records and generated 50,000 additional rows. The median generated-to-real feature standard-deviation ratio was 0.81. Evaluation reserved real loan records for calibration and testing; generated rows were included only in augmented training. The decision threshold was selected on the calibration split to maximize class-1 F1.
 
 | Held-out metric | Original data | With synthetic rows |
 | --- | ---: | ---: |
@@ -24,9 +24,9 @@ The VAE used a 10-dimensional latent space, larger hidden layers, and a lower KL
 | Class 1 precision / recall / F1 | 0.09 / 1.00 / 0.17 | 0.09 / 0.94 / 0.17 |
 | Macro F1 | 0.09 | 0.14 |
 
-Using all 50,000 synthetic rows gave macro F1 0.09, so the smaller synthetic ratio performed better on macro F1. However, denied-loan (class 1) F1 stayed at 0.17 at both ratios. Class 1 precision remains low, so these results do **not** establish a useful denied-loan predictor. The VAE now produces more varied rows, but the classifier still does not distinguish denied loans well on held-out real data.
+Using all 50,000 synthetic rows gave macro F1 0.09, so the smaller synthetic ratio performed better on macro F1. However, class-1 F1 stayed at 0.17 at both ratios. Class-1 precision remains low, so these results do **not** establish a useful predictor. The VAE produces varied rows, but this evaluation does not show a meaningful class-1 F1 improvement on held-out real data.
 
-The comparison uses a fixed real-data split (65% training, 15% threshold calibration, 20% final test) with seed 42/43. The threshold is calibrated separately for each model on real calibration examples. Because the dataset is highly imbalanced and the classifier's scores are poorly calibrated, accuracy alone is not informative here.
+The executed [submission evidence notebook](Submission_Evidence.ipynb) records the Part 2 training history, validation and test reports, labeled image predictions, VAE training and validation losses, and Part 3 real-held-out comparisons. The comparison uses a fixed real-data split (65% training, 15% threshold calibration, 20% final test) with seed 42/43. The threshold is calibrated separately for each model on real calibration examples. Because the dataset is highly imbalanced and the classifier's scores are poorly calibrated, accuracy alone is not informative here.
 
 ## Predictive-signal check
 

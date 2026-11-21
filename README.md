@@ -8,9 +8,13 @@ The supplied 67,463-row loan dataset is a default-prediction dataset. Its source
 
 ## Results
 
-- Travel image classifier: **97.9% accuracy** on 48 held-out images, with a best validation accuracy of 98.3%.
-- Loan experiment: the VAE generates 50,000 status-1 rows. A 25% synthetic-data ratio gave only a small class-1 F1 gain (0.168 to 0.171) with a class-weighted random forest. Held-out ROC-AUC remains close to chance, so this dataset does not support a reliable predictor.
+- Travel image classifier: **97.9% accuracy** on 48 held-out images, with a best validation accuracy of 96.7% in the recorded run.
+- Loan experiment: the VAE trains for 750 epochs and generates 50,000 status-1 rows. The notebook compares baseline and augmented training on real held-out data and shows that class-1 F1 remains weak (0.17); the dataset does not support a reliable predictor.
 - See [Project_Results.md](Project_Results.md) for split design, class metrics, label audit, and limitations.
+
+## Executed submission evidence
+
+[Submission_Evidence.ipynb](Submission_Evidence.ipynb) is an executed notebook with the strategy rationale, VGG16 train/validation history, validation and test metrics, labeled image predictions, VAE train/validation loss across all 750 epochs, and baseline-versus-augmented loan metrics. Its evaluation keeps generated rows out of the real calibration and test sets.
 
 ## Setup
 
@@ -48,6 +52,7 @@ python starter_code/part2-synthetic/feature_signal_report.py
 - [Part 1 analysis report (PDF)](Part1_Small_Data_Problem_Analysis_Report.pdf)
 - [Part 1 analysis report (Markdown)](Part1_Small_Data_Problem_Analysis_Report.md)
 - [Measured results and data interpretation](Project_Results.md)
+- [Executed training and evaluation notebook](Submission_Evidence.ipynb)
 - Trained travel classifier head: `starter_code/part1-transfer/travel_vgg16.pth`
 - Augmented loan data: `starter_code/part2-synthetic/data/loan_continuous_expanded.csv`
 

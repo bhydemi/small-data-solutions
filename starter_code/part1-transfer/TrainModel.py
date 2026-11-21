@@ -2,7 +2,8 @@
 import copy
 import torch
 
-def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader, num_epochs=20):
+def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader,
+                num_epochs=20, return_history=False):
     #Get correct device
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
@@ -14,6 +15,7 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
     
     highest_accuracy = 0.0
     best_model_weights = copy.deepcopy(model.state_dict())
+    history = {"train_loss": [], "train_accuracy": [], "val_loss": [], "val_accuracy": []}
     
     def update_model(loader, training):
         current_loss = 0.0
@@ -46,7 +48,9 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
         scheduler.step()
         
         epoch_train_loss = train_loss / len(train_loader.dataset)
-        epoch_train_accuracy = train_correct.double() / len(train_loader.dataset)
+        epoch_train_accuracy = train_correct.float() / len(train_loader.dataset)
+        history["train_loss"].append(float(epoch_train_loss))
+        history["train_accuracy"].append(float(epoch_train_accuracy))
         print('Phase: Train  Loss: {} Accuracy: {}'.format(epoch_train_loss, epoch_train_accuracy))
         
         #val phase
@@ -54,7 +58,9 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
         val_loss, val_correct = update_model(val_loader, False)
         
         epoch_val_loss = val_loss / len(val_loader.dataset)
-        epoch_val_accuracy = val_correct.double() / len(val_loader.dataset)
+        epoch_val_accuracy = val_correct.float() / len(val_loader.dataset)
+        history["val_loss"].append(float(epoch_val_loss))
+        history["val_accuracy"].append(float(epoch_val_accuracy))
         print('Phase: Validation  Loss: {} Accuracy: {}'.format(epoch_val_loss, epoch_val_accuracy))
         
         if epoch_val_accuracy > highest_accuracy:
@@ -63,4 +69,4 @@ def train_model(model, criterion, optimizer, scheduler, train_loader, val_loader
     
     print('Training finished. Highest accuracy: {}'.format(highest_accuracy))
     model.load_state_dict(best_model_weights)
-    return model
+    return (model, history) if return_history else model

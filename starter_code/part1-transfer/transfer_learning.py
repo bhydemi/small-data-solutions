@@ -1,6 +1,7 @@
 """Train a three-class travel image classifier with a frozen ImageNet VGG16."""
 from pathlib import Path
 
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -66,10 +67,11 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.classifier[6].parameters(), lr=1e-3)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
-    trained_model = train_model(
+    trained_model, history = train_model(
         model, criterion, optimizer, scheduler,
-        train_loader, val_loader, num_epochs=8,
+        train_loader, val_loader, num_epochs=8, return_history=True,
     )
+    pd.DataFrame(history).to_csv(DATA_DIR.parent / "travel_training_history.csv", index_label="epoch")
     test_model(test_loader, trained_model, class_names)
     # The ImageNet backbone is reproducibly loaded by build_model; save only the
     # small task-specific head instead of duplicating the 500+ MB VGG16 weights.

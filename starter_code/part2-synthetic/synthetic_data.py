@@ -129,7 +129,56 @@ def generate_fake(mu, logvar, no_samples, scaler, model):
     fake_data = scaler.inverse_transform(pred)
     return fake_data
 
-# When you have all the code in place to generate synthetic data, uncomment the code below to run the model and the tests. 
+
+def train_vae(model, trainloader, valloader, criterion, optimizer, device, num_epochs=750):
+    """Train and validate the VAE every epoch; restore the best validation state."""
+    best_val = float("inf")
+    best_state = None
+    best_mu, best_logvar = None, None
+    history = {"train_loss": [], "val_loss": []}
+
+    for epoch in range(num_epochs):
+        model.train()
+        train_loss = 0.0
+        for batch in trainloader:
+            batch = batch.to(device)
+            optimizer.zero_grad(set_to_none=True)
+            reconstruction, mu, logvar = model(batch)
+            loss = criterion(reconstruction, batch, mu, logvar)
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+
+        model.eval()
+        val_loss = 0.0
+        mu_batches, logvar_batches = [], []
+        with torch.no_grad():
+            for batch in valloader:
+                batch = batch.to(device)
+                reconstruction, mu, logvar = model(batch)
+                val_loss += criterion(reconstruction, batch, mu, logvar).item()
+                mu_batches.append(mu.cpu())
+                logvar_batches.append(logvar.cpu())
+
+        mean_train = train_loss / max(1, len(trainloader))
+        mean_val = val_loss / max(1, len(valloader))
+        history["train_loss"].append(mean_train)
+        history["val_loss"].append(mean_val)
+        if mean_val < best_val:
+            best_val = mean_val
+            best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
+            best_mu = torch.cat(mu_batches)
+            best_logvar = torch.cat(logvar_batches)
+        if (epoch + 1) % 50 == 0 or epoch == 0:
+            print(f"Epoch {epoch + 1}/{num_epochs}: train loss {mean_train:.2f}; validation loss {mean_val:.2f}")
+
+    if best_state is None:
+        raise RuntimeError("VAE did not complete a validation epoch; check dataset size and batch size")
+    model.load_state_dict(best_state)
+    model.to(device).eval()
+    return model, best_mu, best_logvar, history
+
+# Run the VAE training and evaluation workflow with this module.
 def main():
     data_dir = Path(__file__).resolve().parent / "data"
     original_path = data_dir / "loan_continuous.csv"
@@ -154,47 +203,10 @@ def main():
     model = Autoencoder(D_in=train_data.x.shape[1], H=96, H2=32, latent_dim=10).to(device)
     criterion = CustomLoss(beta=0.02)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    num_epochs = 750
-    best_val = float("inf")
-    best_state = None
-    best_mu, best_logvar = None, None
-
-    for epoch in range(num_epochs):
-        model.train()
-        train_loss = 0.0
-        for batch in trainloader:
-            batch = batch.to(device)
-            optimizer.zero_grad(set_to_none=True)
-            reconstruction, mu, logvar = model(batch)
-            loss = criterion(reconstruction, batch, mu, logvar)
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.item()
-
-        model.eval()
-        val_loss = 0.0
-        mu_batches, logvar_batches = [], []
-        with torch.no_grad():
-            for batch in valloader:
-                batch = batch.to(device)
-                reconstruction, mu, logvar = model(batch)
-                val_loss += criterion(reconstruction, batch, mu, logvar).item()
-                mu_batches.append(mu.cpu())
-                logvar_batches.append(logvar.cpu())
-        mean_val = val_loss / max(1, len(valloader))
-        if mean_val < best_val:
-            best_val = mean_val
-            best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
-            best_mu = torch.cat(mu_batches)
-            best_logvar = torch.cat(logvar_batches)
-        if (epoch + 1) % 50 == 0 or epoch == 0:
-            mean_train = train_loss / max(1, len(trainloader))
-            print(f"Epoch {epoch + 1}/{num_epochs}: train loss {mean_train:.2f}; validation loss {mean_val:.2f}")
-
-    if best_state is None:
-        raise RuntimeError("VAE did not complete a validation epoch; check dataset size and batch size")
-    model.load_state_dict(best_state)
-    model.to(device).eval()
+    model, best_mu, best_logvar, history = train_vae(
+        model, trainloader, valloader, criterion, optimizer, device, num_epochs=750
+    )
+    pd.DataFrame(history).to_csv(data_dir / "vae_training_history.csv", index_label="epoch")
     fake_data = generate_fake(best_mu, best_logvar, 50000, train_data.standardizer, model)
     synthetic = pd.DataFrame(fake_data, columns=status1.columns)
     # Restore the known class label because the decoder also approximates that column.
